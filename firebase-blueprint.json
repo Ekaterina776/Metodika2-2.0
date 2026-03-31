@@ -1,0 +1,53 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile information for teachers",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Unique user ID from Firebase Auth" },
+        "displayName": { "type": "string", "description": "Full name of the teacher" },
+        "email": { "type": "string", "description": "Email address of the teacher" },
+        "role": { "type": "string", "enum": ["teacher", "admin"], "description": "User role" },
+        "school": { "type": "string", "description": "School name" },
+        "subject": { "type": "string", "description": "Subject taught" },
+        "bio": { "type": "string", "description": "Short biography" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp when the profile was created" }
+      },
+      "required": ["uid", "displayName", "email", "role"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "Educational task created by a teacher",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique task ID" },
+        "authorUid": { "type": "string", "description": "UID of the teacher who created the task" },
+        "authorName": { "type": "string", "description": "Name of the teacher" },
+        "title": { "type": "string", "description": "Title of the task" },
+        "grade": { "type": "string", "description": "Target grade" },
+        "tech": { "type": "string", "description": "Technology used" },
+        "description": { "type": "string", "description": "Description of the task" },
+        "goals": { "type": "string", "description": "Educational goals" },
+        "type": { "type": "string", "enum": ["test", "flashcards", "matching", "other", "embed", "file"], "description": "Task type" },
+        "content": { "type": "object", "description": "Task content (questions, cards, etc.)" },
+        "views": { "type": "number", "description": "Number of views" },
+        "likes": { "type": "number", "description": "Number of likes" },
+        "comments": { "type": "number", "description": "Number of comments" },
+        "image": { "type": "string", "description": "URL of the task image" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp when the task was created" }
+      },
+      "required": ["authorUid", "title", "type", "content"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Collection of user profiles"
+    },
+    "/tasks/{taskId}": {
+      "schema": "Task",
+      "description": "Collection of educational tasks"
+    }
+  }
+}

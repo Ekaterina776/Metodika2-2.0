@@ -1,0 +1,92 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: userId (UID from Auth)
+    // Fields:
+    //   - uid: string (required) - Unique user ID from Firebase Auth
+    //   - displayName: string (required) - Full name of the teacher
+    //   - email: string (required) - Email address of the teacher
+    //   - role: string (required, enum: ['teacher', 'admin']) - User role
+    //   - school: string (optional) - School name
+    //   - subject: string (optional) - Subject taught
+    //   - bio: string (optional) - Short biography
+    //   - createdAt: timestamp (required) - Timestamp when the profile was created
+    //
+    // Collection: tasks
+    // Document ID: taskId
+    // Fields:
+    //   - authorUid: string (required) - UID of the teacher who created the task
+    //   - authorName: string (optional) - Name of the teacher
+    //   - title: string (required) - Title of the task
+    //   - grade: string (optional) - Target grade
+    //   - tech: string (optional) - Technology used
+    //   - description: string (optional) - Description of the task
+    //   - goals: string (optional) - Educational goals
+    //   - type: string (required, enum: ['test', 'flashcards', 'matching', 'other']) - Task type
+    //   - content: map (required) - Task content (questions, cards, etc.)
+    //   - views: number (optional) - Number of views
+    //   - likes: number (optional) - Number of likes
+    //   - comments: number (optional) - Number of comments
+    //   - image: string (optional) - URL of the task image
+    //   - createdAt: timestamp (required) - Timestamp when the task was created
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.authorUid;
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'displayName', 'email', 'role']) &&
+             data.uid is string && data.uid.size() > 0 &&
+             data.displayName is string && data.displayName.size() > 0 && data.displayName.size() < 100 &&
+             data.email is string && data.email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$") &&
+             data.role in ['teacher', 'admin'];
+    }
+
+    function isValidTask(data) {
+      return data.keys().hasAll(['authorUid', 'title', 'type', 'content']) &&
+             data.authorUid is string && data.authorUid == request.auth.uid &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
+             data.type in ['test', 'flashcards', 'matching', 'other', 'embed', 'file'] &&
+             data.content is map;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isOwner(userId) && isValidUser(request.resource.data) && 
+                      request.resource.data.role == resource.data.role; // Role cannot be changed by user
+    }
+
+    match /tasks/{taskId} {
+      allow read: if true; // Tasks are public
+      allow create: if isAuthenticated() && isValidTask(request.resource.data);
+      allow update: if (isDocOwner() && isValidTask(request.resource.data) &&
+                        request.resource.data.authorUid == resource.data.authorUid) ||
+                       (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views']) &&
+                        request.resource.data.views == resource.data.views + 1);
+      allow delete: if isDocOwner();
+    }
+  }
+}
